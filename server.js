@@ -14,8 +14,6 @@ class Server {
   constructor() {
     this.expressServer = express();
 
-    this.updateCacheFiles();
-
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
   }
 
@@ -276,7 +274,7 @@ class Server {
         util.error(err);
         return;
       }
-      util.log(`Log updated for ${response.id} in ${response.actualTime} ms`);
+      util.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
     });
   }
 
