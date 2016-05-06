@@ -5,7 +5,8 @@
   "main": "app.js",
   "dependencies": {
     "express": "^4.13.4",
-    "jsonfile": "^2.3.0"
+    "jsonfile": "^2.3.0",
+    "node-schedule": "^1.1.0"
   },
   "devDependencies": {},
   "scripts": {

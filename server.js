@@ -6,27 +6,33 @@
 const util = require("util");
 const express = require("express");
 const http = require("https");
-const jsonFile = require('jsonfile');
+const fs = require("fs");
+const jsonFile = require("jsonfile");
+const schedule = require("node-schedule");
 
 class Server {
   constructor() {
-    this.express = express();
+    this.expressServer = express();
+
+    this.updateCacheFiles();
+
+    this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
   }
 
   listen() {
-    var server = this.express.listen(3021, "0.0.0.0", () => {
+    var server = this.expressServer.listen(3021, "0.0.0.0", () => {
       var host = server.address().address;
       var port = server.address().port;
       util.log("Webserver listening at http://%s:%s", host, port);
     });
-    this.server = server;
+    this.webServer = server;
 
     this.registerHandlers();
   }
 
   registerHandlers() {
-    this.express.get("/:id", this.raceHandler.bind(this));
-    this.express.get("/", Server.indexHandler.bind(this));
+    this.expressServer.get("/:id", this.raceHandler.bind(this));
+    this.expressServer.get("/", Server.indexHandler.bind(this));
   }
 
   static indexHandler(req, res) {
@@ -44,19 +50,54 @@ class Server {
     this.sendCached(res, id);
   }
 
+  updateCacheFiles() {
+    util.log("Looking for files to update");
+    fs.readdir("cache", (err, files) => {
+      if (err) {
+        util.error(err);
+        return;
+      }
+
+      for (let file of files) {
+        let id = parseInt(file.substring(0, file.indexOf(".")), 10);
+        if (isNaN(id)) {
+          util.error(`'${id}' is not a number`);
+          continue;
+        }
+
+        this.checkUpdateNeeded(id);
+      }
+    });
+  }
+
   updateCache(id) {
+    util.log(`Updating cache for ${id}`);
     let response = {
       id: id,
       totalTime: 0,
       startTime: Date.now(),
       rallyData: [],
-      requestCount: 1
+      requestCount: 0
     };
 
-    // https://www.dirtgame.com/uk/api/event?assists=any&eventId=91822&leaderboard=true&noCache=1462395458947&page=1&stageId=0
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
         }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, this.firstFetchHandler.bind(this, response, start));
+  }
+
+  checkUpdateNeeded(id) {
+    jsonFile.readFile(`cache/${id}.json`, (err, data) => {
+      if (err) {
+        util.log(err);
+        return;
+      }
+
+      if (data.rallyFinished === true) {
+        return;
+      }
+
+      this.updateCache(id);
+    });
   }
 
   firstFetchHandler(response, start, res) {
@@ -65,14 +106,19 @@ class Server {
       body += chunk;
     });
     res.on("end", () => {
-      let result = JSON.parse(body);
+      let result = null;
+      try {
+        result = JSON.parse(body);
+      } catch (err) {
+        util.error(err);
+        return;
+      }
 
       if (result.Pages === 0) {
         this.stopUpdating(response.id);
         return;
       }
 
-      //response.rallyData.push([result]);
       response.rallyCount = result.TotalStages;
       response.ssFinished = 0;
 
@@ -85,8 +131,6 @@ class Server {
           http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id}&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`, this.ssHandler.bind(this, i, response, start1));
         }
       }
-
-      //originalRes.send(response);
     });
   }
 
@@ -99,7 +143,12 @@ class Server {
       if (typeof jsonData === "object") {
         ssResult = jsonData;
       } else {
-        ssResult = JSON.parse(body);
+        try {
+          ssResult = JSON.parse(body);
+        } catch (err) {
+          util.error(err);
+          return;
+        }
       }
 
       if (ssResult.Pages === 0) {
@@ -108,8 +157,6 @@ class Server {
       }
 
       ssResult.time = time;
-      //response.rallyData[stage] = [result];
-      //response.ssFinished[stage] = false;
 
       if (ssResult.Pages === 1) {
         response.rallyData[stage] = [ssResult];
@@ -138,12 +185,10 @@ class Server {
             this.saveDataToCache(response);
           }
         }, (reason) => {
-          // if(reason === "CACHE") {
-          //   Server.sendCached(response.id, originalRes);
-          //   return;
-          // }
-          // originalRes.status(500).send(reason);
           util.error(reason);
+          if (reason === "CACHE") {
+            this.stopUpdating(response.id);
+          }
         });
       }
 
@@ -153,6 +198,9 @@ class Server {
         body += chunk;
       });
       res.on("end", endHandler.bind(this));
+      res.on("error", (err) => {
+        util.error(err);
+      })
     } else {
       endHandler(res);
     }
@@ -166,10 +214,17 @@ class Server {
     res.on("end", () => {
       let time = Date.now() - start;
       response.totalTime += time;
-      let result = JSON.parse(body);
+      let result = null;
+      try {
+        result = JSON.parse(body);
+      } catch (err) {
+        reject(err);
+        return;
+      }
 
       if (result.Pages === 0) {
         reject("CACHE");
+        return;
       }
 
       result.time = time;
@@ -221,9 +276,8 @@ class Server {
         util.error(err);
         return;
       }
-      this.startUpdating(response.id);
+      util.log(`Log updated for ${response.id} in ${response.actualTime} ms`);
     });
-    //originalRes.send(response);
   }
 
   sendCached(res, id) {
@@ -244,12 +298,22 @@ class Server {
     });
   }
 
-  startUpdating(id) {
-    // TODO: implement startUpdating(id)
-  }
-
   stopUpdating(id) {
-    // TODO: implement stopUpdating(id)
+    jsonFile.readFile(`cache/${id}.json`, (err, data) => {
+      if (err) {
+        util.log(err);
+        return;
+      }
+
+      data.rallyFinished = true;
+      jsonFile.writeFile(`cache/${id}.json`, data, (err) => {
+        if (err) {
+          util.log(err);
+          return;
+        }
+        util.log(`Stopping updates for ${id}`);
+      })
+    });
   }
 }
 
