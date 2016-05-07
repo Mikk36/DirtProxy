@@ -90,7 +90,7 @@ class Server {
         return;
       }
 
-      if (data.rallyFinished === true) {
+      if (typeof data.rallyFinished !== "undefined" && data.rallyFinished === true) {
         return;
       }
 
@@ -303,13 +303,31 @@ class Server {
         return;
       }
 
-      data.rallyFinished = true;
+      if (typeof data.rallyFinished !== "undefined") {
+        return;
+      }
+
+      if (typeof data.finishUpdating === "undefined") {
+        data.finishUpdating = 1;
+      } else {
+        if (data.finishUpdating > 2) {
+          data.rallyFinished = true;
+          delete data.finishUpdating;
+        } else {
+          data.finishUpdating++;
+        }
+      }
+
       jsonFile.writeFile(`cache/${id}.json`, data, (err) => {
         if (err) {
           util.log(err);
           return;
         }
-        util.log(`Stopping updates for ${id}`);
+        if (typeof data.rallyFinished !== "undefined") {
+          util.log(`Stopping updates for ${id}`);
+        } else {
+          util.log(`Update stopping check ${data.finishUpdating} for ${id}`);
+        }
       })
     });
   }
