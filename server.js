@@ -52,14 +52,14 @@ class Server {
     util.log("Looking for files to update");
     fs.readdir("cache", (err, files) => {
       if (err) {
-        util.error(err);
+        console.error(err);
         return;
       }
 
       for (let file of files) {
         let id = parseInt(file.substring(0, file.indexOf(".")), 10);
         if (isNaN(id)) {
-          util.error(`'${id}' is not a number`);
+          console.error(`'${id}' is not a number`);
           continue;
         }
 
@@ -108,7 +108,7 @@ class Server {
       try {
         result = JSON.parse(body);
       } catch (err) {
-        util.error(err);
+        console.error(err);
         return;
       }
 
@@ -144,7 +144,7 @@ class Server {
         try {
           ssResult = JSON.parse(body);
         } catch (err) {
-          util.error(err);
+          console.error(err);
           return;
         }
       }
@@ -183,7 +183,7 @@ class Server {
             this.saveDataToCache(response);
           }
         }, (reason) => {
-          util.error(reason);
+          console.error(reason);
           if (reason === "CACHE") {
             this.stopUpdating(response.id);
           }
@@ -197,7 +197,7 @@ class Server {
       });
       res.on("end", endHandler.bind(this));
       res.on("error", (err) => {
-        util.error(err);
+        console.error(err);
       })
     } else {
       endHandler(res);
@@ -271,7 +271,7 @@ class Server {
     response.cacheTime = new Date();
     jsonFile.writeFile(`cache/${response.id}.json`, response, (err) => {
       if (err) {
-        util.error(err);
+        console.error(err);
         return;
       }
       util.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
@@ -285,7 +285,7 @@ class Server {
         if (err.code === "ENOENT") {
           jsonFile.writeFile(`cache/${id}.json`, {error: "No data yet"}, (err) => {
             if (err) {
-              util.error(err);
+              console.error(err);
             }
           });
           this.updateCache(id);
