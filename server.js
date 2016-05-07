@@ -304,6 +304,7 @@ class Server {
       }
 
       if (typeof data.rallyFinished !== "undefined") {
+        console.error(`stopUpdating should not have been called for ${id}, it's already marked as finished`);
         return;
       }
 
