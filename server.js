@@ -279,6 +279,7 @@ class Server {
   }
 
   sendCached(res, id) {
+    util.log(`Sending cached data for ${id}`);
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
         res.status(500).send(err);
