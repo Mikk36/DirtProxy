@@ -328,7 +328,7 @@ Disallow: `;
       if (typeof data.finishUpdating === "undefined") {
         data.finishUpdating = 1;
       } else {
-        if (data.finishUpdating > 2) {
+        if (data.finishUpdating >= 2) {
           data.rallyFinished = true;
           delete data.finishUpdating;
         } else {
