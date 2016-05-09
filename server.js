@@ -9,10 +9,12 @@ const http = require("https");
 const fs = require("fs");
 const jsonFile = require("jsonfile");
 const schedule = require("node-schedule");
+const morgan = require('morgan');
 
 class Server {
   constructor() {
     this.expressServer = express();
+    this.expressServer.use(morgan("combined"));
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
   }
@@ -29,12 +31,19 @@ class Server {
   }
 
   registerHandlers() {
-    this.expressServer.get("/:id", this.raceHandler.bind(this));
-    this.expressServer.get("/", Server.indexHandler.bind(this));
+    this.expressServer.get("/id/:id", this.raceHandler.bind(this));
+    this.expressServer.get("/", Server.indexHandler);
+    this.expressServer.get("/robots.txt", Server.robotsHandler);
   }
 
   static indexHandler(req, res) {
     let response = {status: "OK"};
+    res.send(response);
+  }
+
+  static robotsHandler(req, res) {
+    let response = `User-agent: *
+Disallow: `;
     res.send(response);
   }
 
@@ -45,7 +54,6 @@ class Server {
       return;
     }
 
-    util.log(`Sending cached data for ${id} to ${req.ip}`);
     this.sendCached(res, id);
   }
 
@@ -119,9 +127,9 @@ class Server {
       }
 
       response.rallyCount = result.TotalStages;
-      response.ssFinished = 0;
+      response.ssFinished = 1;
 
-      for (let i = 1; i <= response.rallyCount; i++) {
+      for (let i = 0; i <= response.rallyCount; i++) {
         if (i === 0) {
           this.ssHandler(i, response, start, result);
         } else {
@@ -186,7 +194,15 @@ class Server {
         }, (reason) => {
           console.error(reason);
           if (reason === "CACHE") {
-            this.stopUpdating(response.id);
+            if (stage === 0) {
+              this.stopUpdating(response.id);
+            } else {
+              response.ssFinished++;
+
+              if (response.rallyCount === response.ssFinished) {
+                this.saveDataToCache(response);
+              }
+            }
           }
         });
       }

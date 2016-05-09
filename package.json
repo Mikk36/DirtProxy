@@ -6,6 +6,7 @@
   "dependencies": {
     "express": "^4.13.4",
     "jsonfile": "^2.3.0",
+    "morgan": "^1.7.0",
     "node-schedule": "^1.1.0"
   },
   "devDependencies": {},
