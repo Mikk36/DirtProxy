@@ -14,7 +14,7 @@ const morgan = require('morgan');
 class Server {
   constructor() {
     this.expressServer = express();
-    this.expressServer.use(morgan("combined"));
+    this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
   }
