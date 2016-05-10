@@ -89,7 +89,8 @@ Disallow: `;
 
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=1`, this.firstFetchHandler.bind(this, response, start));
+        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=1`, this.firstFetchHandler.bind(this, response, start)
+    ).on("error", Server.errorLogger);
   }
 
   checkUpdateNeeded(id) {
@@ -135,13 +136,18 @@ Disallow: `;
         } else {
           response.requestCount++;
           let start1 = Date.now();
-          http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id}&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`, this.ssHandler.bind(this, i, response, start1));
+          http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
+                  }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
+              this.ssHandler.bind(this, i, response, start1)
+          ).on("error", Server.errorLogger);
         }
       }
     });
-    res.on("error", (err) => {
-      console.error(err);
-    });
+    res.on("error", Server.errorLogger);
+  }
+
+  static errorLogger(err) {
+    console.error(err);
   }
 
   ssHandler(stage, response, start, res) {
@@ -182,7 +188,8 @@ Disallow: `;
             let start1 = Date.now();
             http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                 }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
-                }`, this.ssPageHandler.bind(this, resolve, reject, response, start1));
+                }`, this.ssPageHandler.bind(this, resolve, reject, response, start1)
+            ).on("error", Server.errorLogger);
           }));
         }
 
