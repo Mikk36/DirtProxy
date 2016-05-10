@@ -223,9 +223,7 @@ Disallow: `;
         body += chunk;
       });
       res.on("end", endHandler.bind(this));
-      res.on("error", (err) => {
-        console.error(err);
-      })
+      res.on("error", Server.errorLogger);
     } else {
       endHandler(res);
     }
