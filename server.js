@@ -84,12 +84,12 @@ Disallow: `;
       totalTime: 0,
       startTime: Date.now(),
       rallyData: [],
-      requestCount: 0
+      requestCount: 1
     };
 
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, this.firstFetchHandler.bind(this, response, start));
+        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=1`, this.firstFetchHandler.bind(this, response, start));
   }
 
   checkUpdateNeeded(id) {
@@ -127,10 +127,10 @@ Disallow: `;
       }
 
       response.rallyCount = result.TotalStages;
-      response.ssFinished = 1;
+      response.ssFinished = 0;
 
-      for (let i = 0; i <= response.rallyCount; i++) {
-        if (i === 0) {
+      for (let i = 1; i <= response.rallyCount; i++) {
+        if (i === 1) {
           this.ssHandler(i, response, start, result);
         } else {
           response.requestCount++;
@@ -158,7 +158,7 @@ Disallow: `;
         }
       }
 
-      if (ssResult.Pages === 0) {
+      if (ssResult.Pages === 0 && stage === 1) {
         this.stopUpdating(response.id);
         return;
       }
@@ -194,7 +194,7 @@ Disallow: `;
         }, (reason) => {
           console.error(reason);
           if (reason === "CACHE") {
-            if (stage === 0) {
+            if (stage === 1) {
               this.stopUpdating(response.id);
             } else {
               response.ssFinished++;
@@ -263,7 +263,6 @@ Disallow: `;
       let stageData = null;
       for (let page of stage) {
         if (page.Page === 1) {
-          stageData = page;
           stageData = {
             total: page.LeaderboardTotal,
             entries: [],
