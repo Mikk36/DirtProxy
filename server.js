@@ -139,6 +139,9 @@ Disallow: `;
         }
       }
     });
+    res.on("error", (err) => {
+      console.error(err);
+    });
   }
 
   ssHandler(stage, response, start, res) {
