@@ -91,7 +91,7 @@ Disallow: `;
 
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=1`, this.firstFetchHandler.bind(this, response, start)
+        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, this.firstFetchHandler.bind(this, response, start)
     ).on("error", Server.errorLogger);
   }
 
@@ -132,8 +132,8 @@ Disallow: `;
       response.rallyCount = result.TotalStages;
       response.ssFinished = 0;
 
-      for (let i = 1; i <= response.rallyCount; i++) {
-        if (i === 1) {
+      for (let i = 0; i <= response.rallyCount; i++) {
+        if (i === 0) {
           this.ssHandler(i, response, start, result);
         } else {
           response.requestCount++;
@@ -178,7 +178,9 @@ Disallow: `;
 
       if (ssResult.Pages === 1) {
         response.rallyData[stage] = [ssResult];
-        response.ssFinished++;
+        if (stage !== 0) {
+          response.ssFinished++;
+        }
         if (response.rallyCount === response.ssFinished) {
           this.saveDataToCache(response);
         }
@@ -261,7 +263,6 @@ Disallow: `;
   }
 
   saveDataToCache(data) {
-    data.rallyData.splice(0, 1);
     var response = {
       id: data.id,
       stageData: [],
@@ -269,7 +270,14 @@ Disallow: `;
       requestCount: data.requestCount,
       totalTime: data.totalTime
     };
-    for (let stage of data.rallyData) {
+    let processingFailed = false;
+    data.rallyData.forEach((stage, index) => {
+      if (index === 0) {
+        return;
+      }
+      if (processingFailed === true) {
+        return;
+      }
       let stageData = null;
       for (let page of stage) {
         if (page.Page === 1) {
@@ -291,15 +299,20 @@ Disallow: `;
           });
         }
       }
-      if (stage[0].LeaderboardTotal !== stageData.entries.length) {
-        console.error(`Entries is empty while it should not be!`);
+      if (stage[0].LeaderboardTotal !== stageData.entries.length
+          || stage[0].LeaderboardTotal < data.rallyData[0][0].LeaderboardTotal) {
+        console.error(`Entries is empty/smaller while it should not be!`);
         setTimeout(() => {
           util.log(`Retrying to update cache for ${data.id}`);
           this.updateCache(data.id);
         }, 5000);
+        processingFailed = true;
         return;
       }
       response.stageData.push(stageData);
+    });
+    if (processingFailed === true) {
+      return;
     }
     response.actualTime = Date.now() - data.startTime;
     response.cacheTime = new Date();
