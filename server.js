@@ -67,6 +67,7 @@ Disallow: `;
         return;
       }
 
+      let i = 0;
       for (let file of files) {
         let id = parseInt(file.substring(0, file.indexOf(".")), 10);
         if (isNaN(id)) {
@@ -74,7 +75,10 @@ Disallow: `;
           continue;
         }
 
-        this.checkUpdateNeeded(id);
+        setTimeout(() => {
+          this.checkUpdateNeeded(id);
+        }, i * 10000);
+        i++;
       }
     });
   }
