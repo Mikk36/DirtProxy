@@ -280,9 +280,8 @@ Disallow: `;
           };
         }
         stageData.times.push(page.time);
-        if (page.LeaderboardTotal !== 0 && page.Entries.length === 0) {
+        if (page.LeaderboardTotal !== page.Entries.length) {
           console.error(`Entries is empty while it should not be!`);
-          //this.updateCache(data.id);
           setTimeout(() => {
             util.log(`Retrying to update cache for ${data.id}`);
             this.updateCache(data.id);
