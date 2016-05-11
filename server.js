@@ -300,7 +300,8 @@ Disallow: `;
         }
       }
       if (stage[0].LeaderboardTotal !== stageData.entries.length
-          || stage[0].LeaderboardTotal < data.rallyData[0][0].LeaderboardTotal) {
+          || stage[0].LeaderboardTotal < data.rallyData[0][0].LeaderboardTotal
+          || (index > 1 && stage[0].LeaderboardTotal > data.rallyData[index - 1][0].LeaderboardTotal)) {
         console.error(`Entries is empty/smaller while it should not be!`);
         setTimeout(() => {
           util.log(`Retrying to update cache for ${data.id}`);
