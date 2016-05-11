@@ -278,6 +278,10 @@ Disallow: `;
           };
         }
         stageData.times.push(page.time);
+        if (page.LeaderboardTotal !== 0 && page.Entries.length === 0) {
+          console.error(`Entries is empty while it should not be!`);
+          return;
+        }
         for (let entry of page.Entries) {
           stageData.entries.push({
             Position: entry.Position,
