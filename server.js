@@ -142,10 +142,12 @@ Disallow: `;
         } else {
           response.requestCount++;
           let start1 = Date.now();
-          http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-                  }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
-              this.ssHandler.bind(this, i, response, start1)
-          ).on("error", Server.errorLogger);
+          setTimeout(() => {
+            http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
+                    }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
+                this.ssHandler.bind(this, i, response, start1)
+            ).on("error", Server.errorLogger);
+          }, i * 1000);
         }
       }
     });
@@ -194,10 +196,12 @@ Disallow: `;
           promiseList.push(new Promise((resolve, reject) => {
             response.requestCount++;
             let start1 = Date.now();
-            http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-                }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
-                }`, this.ssPageHandler.bind(this, resolve, reject, response, start1)
-            ).on("error", Server.errorLogger);
+            setTimeout(() => {
+              http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
+                  }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
+                  }`, this.ssPageHandler.bind(this, resolve, reject, response, start1)
+              ).on("error", Server.errorLogger);
+            }, i * 1000);
           }));
         }
 
