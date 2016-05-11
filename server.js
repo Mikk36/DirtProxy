@@ -17,6 +17,8 @@ class Server {
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
+
+    //this.updateCacheFiles();
   }
 
   listen() {
@@ -280,6 +282,11 @@ Disallow: `;
         stageData.times.push(page.time);
         if (page.LeaderboardTotal !== 0 && page.Entries.length === 0) {
           console.error(`Entries is empty while it should not be!`);
+          //this.updateCache(data.id);
+          setTimeout(() => {
+            util.log(`Retrying to update cache for ${data.id}`);
+            this.updateCache(data.id);
+          }, 5000);
           return;
         }
         for (let entry of page.Entries) {
