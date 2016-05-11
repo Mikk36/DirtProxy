@@ -280,14 +280,6 @@ Disallow: `;
           };
         }
         stageData.times.push(page.time);
-        if (page.LeaderboardTotal !== page.Entries.length) {
-          console.error(`Entries is empty while it should not be!`);
-          setTimeout(() => {
-            util.log(`Retrying to update cache for ${data.id}`);
-            this.updateCache(data.id);
-          }, 5000);
-          return;
-        }
         for (let entry of page.Entries) {
           stageData.entries.push({
             Position: entry.Position,
@@ -298,6 +290,14 @@ Disallow: `;
             DiffFirst: entry.DiffFirst
           });
         }
+      }
+      if (stage[0].LeaderboardTotal !== stageData.entries.length) {
+        console.error(`Entries is empty while it should not be!`);
+        setTimeout(() => {
+          util.log(`Retrying to update cache for ${data.id}`);
+          this.updateCache(data.id);
+        }, 5000);
+        return;
       }
       response.stageData.push(stageData);
     }
