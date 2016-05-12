@@ -141,8 +141,8 @@ Disallow: `;
           this.ssHandler(i, response, start, result);
         } else {
           response.requestCount++;
-          let start1 = Date.now();
           setTimeout(() => {
+            let start1 = Date.now();
             http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                     }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
                 this.ssHandler.bind(this, i, response, start1)
@@ -195,8 +195,8 @@ Disallow: `;
         for (let i = 2; i <= ssResult.Pages; i++) {
           promiseList.push(new Promise((resolve, reject) => {
             response.requestCount++;
-            let start1 = Date.now();
             setTimeout(() => {
+              let start1 = Date.now();
               http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                   }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
                   }`, this.ssPageHandler.bind(this, resolve, reject, response, start1)
