@@ -18,7 +18,7 @@ class Server {
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
 
-    this.updateCacheFiles();
+    //this.updateCacheFiles();
   }
 
   listen() {
