@@ -18,7 +18,7 @@ class Server {
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
 
-    //this.updateCacheFiles();
+    this.updateCacheFiles();
   }
 
   listen() {
@@ -208,7 +208,9 @@ Disallow: `;
         Promise.all(promiseList).then((values) => {
           values.splice(0, 0, ssResult);
           response.rallyData[stage] = values;
-          response.ssFinished++;
+          if (stage !== 0) {
+            response.ssFinished++;
+          }
 
           if (response.rallyCount === response.ssFinished) {
             this.saveDataToCache(response);
@@ -320,6 +322,14 @@ Disallow: `;
       }
       response.stageData.push(stageData);
     });
+    if (response.stageCount !== response.stageData.length) {
+      console.error(`StageData count differs from intended stageCount!`);
+      setTimeout(() => {
+        util.log(`Retrying to update cache for ${data.id}`);
+        this.updateCache(data.id);
+      }, 5000);
+      processingFailed = true;
+    }
     if (processingFailed === true) {
       return;
     }
