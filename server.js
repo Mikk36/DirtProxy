@@ -34,6 +34,7 @@ class Server {
 
   registerHandlers() {
     this.expressServer.get("/id/:id", this.raceHandler.bind(this));
+    this.expressServer.get("/id/:id/remove", Server.removeCacheHandler);
     this.expressServer.get("/", Server.indexHandler);
     this.expressServer.get("/robots.txt", Server.robotsHandler);
   }
@@ -129,7 +130,7 @@ Disallow: `;
       }
 
       if (result.Pages === 0) {
-        this.stopUpdating(response.id);
+        Server.stopUpdating(response.id);
         return;
       }
 
@@ -176,7 +177,7 @@ Disallow: `;
       }
 
       if (ssResult.Pages === 0 && stage === 1) {
-        this.stopUpdating(response.id);
+        Server.stopUpdating(response.id);
         return;
       }
 
@@ -219,7 +220,7 @@ Disallow: `;
           console.error(reason);
           if (reason === "CACHE") {
             if (stage === 1) {
-              this.stopUpdating(response.id);
+              Server.stopUpdating(response.id);
             } else {
               response.ssFinished++;
 
@@ -363,7 +364,7 @@ Disallow: `;
     });
   }
 
-  stopUpdating(id) {
+  static stopUpdating(id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
         util.log(err);
@@ -397,6 +398,42 @@ Disallow: `;
           util.log(`Update stopping check ${data.finishUpdating} for ${id}`);
         }
       })
+    });
+  }
+
+  static removeCacheHandler(req, res) {
+    let id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(500).send({error: "Invalid ID parameter"});
+      return;
+    }
+
+    Server.removeCache(id, res);
+  }
+
+  static removeCache(id, res) {
+    jsonFile.readFile(`cache/${id}.json`, (err, data) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send({error: err});
+        return;
+      }
+
+      if (typeof data.error === "undefined") {
+        return;
+      }
+      if (typeof data.rallyFinished === "undefined") {
+        return;
+      }
+
+      fs.unlink(`cache/${id}.json`, (err) => {
+        if (err) {
+          console.error(err);
+          res.status(500).send({error: err});
+          return;
+        }
+        res.send({status: "OK"});
+      });
     });
   }
 }
