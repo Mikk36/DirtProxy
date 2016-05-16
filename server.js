@@ -313,10 +313,7 @@ Disallow: `;
           || stage[0].LeaderboardTotal < data.rallyData[0][0].LeaderboardTotal
           || (index > 1 && stage[0].LeaderboardTotal > data.rallyData[index - 1][0].LeaderboardTotal)) {
         console.error(`Entries is empty/smaller while it should not be!`);
-        setTimeout(() => {
-          util.log(`Retrying to update cache for ${data.id}`);
-          this.updateCache(data.id);
-        }, 5000);
+        this.retryCache(data.id);
         processingFailed = true;
         return;
       }
@@ -327,13 +324,7 @@ Disallow: `;
     }
     if (response.stageCount !== response.stageData.length) {
       console.error(`StageData count differs from intended stageCount!`);
-      setTimeout(() => {
-        util.log(`Retrying to update cache for ${data.id}`);
-        this.updateCache(data.id);
-      }, 5000);
-      processingFailed = true;
-    }
-    if (processingFailed === true) {
+      this.retryCache(data.id);
       return;
     }
     response.actualTime = Date.now() - data.startTime;
@@ -345,6 +336,13 @@ Disallow: `;
       }
       util.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
     });
+  }
+
+  retryCache(id) {
+    setTimeout(() => {
+      util.log(`Retrying to update cache for ${id}`);
+      this.updateCache(id);
+    }, 5000);
   }
 
   sendCached(res, id) {
