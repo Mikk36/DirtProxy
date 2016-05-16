@@ -22,7 +22,7 @@ class Server {
       console.error(cacheTest);
       return;
     }
-    
+
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
@@ -32,21 +32,18 @@ class Server {
   }
 
   static checkCacheFolder() {
-    fs.mkdir("cache", 0o777, function (err) {
-      if (err) {
-        if (err.code == 'EEXIST') {
-          // All good, folder is there
-          return true;
-        }
-        else {
-          // Something went wrong
-          return err;
-        }
-      } else {
-        // Folder created
+    try {
+      fs.mkdirSync("cache");
+      // Folder created
+      return true;
+    } catch (err) {
+      if (err.code == 'EEXIST') {
+        // All good, folder is there
         return true;
       }
-    });
+      // Something went wrong
+      return err;
+    }
   }
 
   listen() {
