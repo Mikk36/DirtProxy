@@ -26,9 +26,9 @@ class Server {
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
-    this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
+    this.cronJob = schedule.scheduleJob("*/30 * * * *", Server.updateCacheFiles);
 
-    //this.updateCacheFiles();
+    //Server.updateCacheFiles();
   }
 
   static checkCacheFolder() {
@@ -58,7 +58,7 @@ class Server {
   }
 
   registerHandlers() {
-    this.expressServer.get("/id/:id", this.raceHandler.bind(this));
+    this.expressServer.get("/id/:id", Server.raceHandler);
     this.expressServer.get("/id/:id/remove", Server.removeCacheHandler);
     this.expressServer.get("/", Server.indexHandler);
     this.expressServer.get("/robots.txt", Server.robotsHandler);
@@ -75,21 +75,21 @@ Disallow: `;
     res.send(response);
   }
 
-  raceHandler(req, res) {
+  static raceHandler(req, res) {
     let id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
       res.status(500).send({error: "Invalid ID parameter"});
       return;
     }
 
-    this.sendCached(res, id);
+    Server.sendCached(res, id);
   }
 
   static errorLogger(err) {
     console.error(err);
   }
 
-  updateCacheFiles() {
+  static updateCacheFiles() {
     util.log("Looking for files to update");
     fs.readdir("cache", (err, files) => {
       if (err) {
@@ -106,14 +106,14 @@ Disallow: `;
         }
 
         setTimeout(() => {
-          this.checkUpdateNeeded(id);
+          Server.checkUpdateNeeded(id);
         }, i * 10000);
         i++;
       }
     });
   }
 
-  updateCache(id) {
+  static updateCache(id) {
     util.log(`Updating cache for ${id}`);
     let response = {
       id: id,
@@ -125,11 +125,11 @@ Disallow: `;
 
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, this.firstFetchHandler.bind(this, response, start)
+        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, Server.firstFetchHandler.bind(null, response, start)
     ).on("error", Server.errorLogger);
   }
 
-  checkUpdateNeeded(id) {
+  static checkUpdateNeeded(id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
         util.log(err);
@@ -140,11 +140,11 @@ Disallow: `;
         return;
       }
 
-      this.updateCache(id);
+      Server.updateCache(id);
     });
   }
 
-  firstFetchHandler(response, start, res) {
+  static firstFetchHandler(response, start, res) {
     let body = "";
     res.on("data", (chunk) => {
       body += chunk;
@@ -163,14 +163,14 @@ Disallow: `;
 
       for (let i = 0; i <= response.rallyCount; i++) {
         if (i === 0) {
-          this.ssHandler(i, response, start, result);
+          Server.ssHandler(i, response, start, result);
         } else {
           response.requestCount++;
           setTimeout(() => {
             let start1 = Date.now();
             http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                     }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
-                this.ssHandler.bind(this, i, response, start1)
+                Server.ssHandler.bind(null, i, response, start1)
             ).on("error", Server.errorLogger);
           }, i * 1000);
         }
@@ -179,7 +179,7 @@ Disallow: `;
     res.on("error", Server.errorLogger);
   }
 
-  ssHandler(stage, response, start, res) {
+  static ssHandler(stage, response, start, res) {
     let body = "";
     let endHandler = (jsonData) => {
       let time = Date.now() - start;
@@ -209,7 +209,7 @@ Disallow: `;
           response.ssFinished++;
         }
         if (response.rallyCount === response.ssFinished) {
-          this.saveDataToCache(response);
+          Server.saveDataToCache(response);
         }
       } else {
         let promiseList = [];
@@ -220,7 +220,7 @@ Disallow: `;
               let start1 = Date.now();
               http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                   }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
-                  }`, this.ssPageHandler.bind(this, resolve, reject, response, start1)
+                  }`, Server.ssPageHandler.bind(null, resolve, reject, response, start1)
               ).on("error", Server.errorLogger);
             }, i * 1000);
           }));
@@ -234,7 +234,7 @@ Disallow: `;
           }
 
           if (response.rallyCount === response.ssFinished) {
-            this.saveDataToCache(response);
+            Server.saveDataToCache(response);
           }
         }, (reason) => {
           console.error(reason);
@@ -246,14 +246,14 @@ Disallow: `;
       res.on("data", (chunk) => {
         body += chunk;
       });
-      res.on("end", endHandler.bind(this));
+      res.on("end", endHandler);
       res.on("error", Server.errorLogger);
     } else {
       endHandler(res);
     }
   }
 
-  ssPageHandler(resolve, reject, response, start, res) {
+  static ssPageHandler(resolve, reject, response, start, res) {
     let body = "";
     res.on("data", (chunk) => {
       body += chunk;
@@ -277,7 +277,7 @@ Disallow: `;
     });
   }
 
-  saveDataToCache(data) {
+  static saveDataToCache(data) {
     var response = {
       id: data.id,
       stageData: [],
@@ -318,7 +318,7 @@ Disallow: `;
           || stage[0].LeaderboardTotal < data.rallyData[0][0].LeaderboardTotal
           || (index > 1 && stage[0].LeaderboardTotal > data.rallyData[index - 1][0].LeaderboardTotal)) {
         console.error(`Entries is empty/smaller while it should not be!`);
-        this.retryCache(data.id);
+        Server.retryCache(data.id);
         processingFailed = true;
         return;
       }
@@ -329,7 +329,7 @@ Disallow: `;
     }
     if (response.stageCount !== response.stageData.length) {
       console.error(`StageData count differs from intended stageCount!`);
-      this.retryCache(data.id);
+      Server.retryCache(data.id);
       return;
     }
     response.actualTime = Date.now() - data.startTime;
@@ -343,14 +343,14 @@ Disallow: `;
     });
   }
 
-  retryCache(id) {
+  static retryCache(id) {
     setTimeout(() => {
       util.log(`Retrying to update cache for ${id}`);
-      this.updateCache(id);
+      Server.updateCache(id);
     }, 5000);
   }
 
-  sendCached(res, id) {
+  static sendCached(res, id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
         res.status(500).send(err);
@@ -360,7 +360,7 @@ Disallow: `;
               console.error(err);
             }
           });
-          this.updateCache(id);
+          Server.updateCache(id);
         }
         return;
       }
