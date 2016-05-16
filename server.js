@@ -322,6 +322,9 @@ Disallow: `;
       }
       response.stageData.push(stageData);
     });
+    if (processingFailed === true) {
+      return;
+    }
     if (response.stageCount !== response.stageData.length) {
       console.error(`StageData count differs from intended stageCount!`);
       setTimeout(() => {
