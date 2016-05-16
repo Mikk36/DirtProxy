@@ -11,6 +11,10 @@ const jsonFile = require("jsonfile");
 const schedule = require("node-schedule");
 const morgan = require('morgan');
 
+// Config
+const listeningPort = 3021;
+// Config end
+
 class Server {
   constructor() {
     let cacheTest = Server.checkCacheFolder();
@@ -46,7 +50,7 @@ class Server {
   }
 
   listen() {
-    var server = this.expressServer.listen(3021, "0.0.0.0", () => {
+    var server = this.expressServer.listen(listeningPort, "0.0.0.0", () => {
       var host = server.address().address;
       var port = server.address().port;
       util.log("Webserver listening at http://%s:%s", host, port);
