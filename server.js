@@ -85,6 +85,10 @@ Disallow: `;
     this.sendCached(res, id);
   }
 
+  static errorLogger(err) {
+    console.error(err);
+  }
+
   updateCacheFiles() {
     util.log("Looking for files to update");
     fs.readdir("cache", (err, files) => {
@@ -154,11 +158,6 @@ Disallow: `;
         return;
       }
 
-      if (result.Pages === 0) {
-        Server.stopUpdating(response.id);
-        return;
-      }
-
       response.rallyCount = result.TotalStages;
       response.ssFinished = 0;
 
@@ -178,10 +177,6 @@ Disallow: `;
       }
     });
     res.on("error", Server.errorLogger);
-  }
-
-  static errorLogger(err) {
-    console.error(err);
   }
 
   ssHandler(stage, response, start, res) {
@@ -243,17 +238,6 @@ Disallow: `;
           }
         }, (reason) => {
           console.error(reason);
-          if (reason === "CACHE") {
-            if (stage === 1) {
-              Server.stopUpdating(response.id);
-            } else {
-              response.ssFinished++;
-
-              if (response.rallyCount === response.ssFinished) {
-                this.saveDataToCache(response);
-              }
-            }
-          }
         });
       }
 
@@ -285,16 +269,11 @@ Disallow: `;
         return;
       }
 
-      if (result.Pages === 0) {
-        reject("CACHE");
-        return;
-      }
-
       result.time = time;
       resolve(result);
     });
     res.on("error", (error) => {
-      reject(error.message);
+      reject(error);
     });
   }
 
