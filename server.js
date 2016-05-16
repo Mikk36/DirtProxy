@@ -419,6 +419,16 @@ Disallow: `;
         }
         if (typeof data.rallyFinished !== "undefined") {
           util.log(`Stopping updates for ${id}`);
+          if (typeof data.error !== "undefined") {
+
+            Server.removeCache(id, (err) => {
+              if (err) {
+                console.error("Error removing cache", err);
+                return;
+              }
+              console.log("Successfully removed redundant cache");
+            });
+          }
         } else {
           util.log(`Update stopping check ${data.finishUpdating} for ${id}`);
         }
@@ -433,31 +443,38 @@ Disallow: `;
       return;
     }
 
-    Server.removeCache(id, res);
-  }
-
-  static removeCache(id, res) {
-    jsonFile.readFile(`cache/${id}.json`, (err, data) => {
+    Server.removeCache(id, (err) => {
       if (err) {
         console.error(err);
         res.status(500).send({error: err});
         return;
       }
+      res.send({status: "OK"});
+    });
+  }
+
+  static removeCache(id, cb) {
+    jsonFile.readFile(`cache/${id}.json`, (err, data) => {
+      if (err) {
+        if (typeof cb === "function") cb(err);
+        return;
+      }
 
       if (typeof data.error === "undefined") {
+        if (typeof cb === "function") cb("Event is not empty, not removing");
         return;
       }
       if (typeof data.rallyFinished === "undefined") {
+        if (typeof cb === "function") cb("Server has not yet given up on the event");
         return;
       }
 
       fs.unlink(`cache/${id}.json`, (err) => {
         if (err) {
-          console.error(err);
-          res.status(500).send({error: err});
+          if (typeof cb === "function") cb(err);
           return;
         }
-        res.send({status: "OK"});
+        if (typeof cb === "function") cb();
       });
     });
   }
