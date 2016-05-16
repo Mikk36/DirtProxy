@@ -18,7 +18,7 @@ Pull data for event
 /id/<event ID>
 ```
 
-Remove finished cache
+Remove failed and finished cache
 
 ```
 /id/<event ID>/remove
