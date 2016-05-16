@@ -13,12 +13,36 @@ const morgan = require('morgan');
 
 class Server {
   constructor() {
+    let cacheTest = Server.checkCacheFolder();
+    if (cacheTest !== true) {
+      console.error(cacheTest);
+      return;
+    }
+    
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
     this.cronJob = schedule.scheduleJob("*/30 * * * *", this.updateCacheFiles.bind(this));
 
     //this.updateCacheFiles();
+  }
+
+  static checkCacheFolder() {
+    fs.mkdir("cache", 0o777, function (err) {
+      if (err) {
+        if (err.code == 'EEXIST') {
+          // All good, folder is there
+          return true;
+        }
+        else {
+          // Something went wrong
+          return err;
+        }
+      } else {
+        // Folder created
+        return true;
+      }
+    });
   }
 
   listen() {
