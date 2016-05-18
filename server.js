@@ -97,7 +97,7 @@ Disallow: `;
         return;
       }
 
-      let i = 0;
+      let delay = {counter: 0};
       for (let file of files) {
         let id = parseInt(file.substring(0, file.indexOf(".")), 10);
         if (isNaN(id)) {
@@ -105,10 +105,7 @@ Disallow: `;
           continue;
         }
 
-        setTimeout(() => {
-          Server.checkUpdateNeeded(id);
-        }, i * 10000);
-        i++;
+        Server.checkUpdateNeeded(id, delay);
       }
     });
   }
@@ -129,7 +126,7 @@ Disallow: `;
     ).on("error", Server.errorLogger);
   }
 
-  static checkUpdateNeeded(id) {
+  static checkUpdateNeeded(id, delay) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
         util.log(err);
@@ -140,7 +137,10 @@ Disallow: `;
         return;
       }
 
-      Server.updateCache(id);
+      setTimeout(() => {
+        Server.updateCache(id);
+      }, delay.counter * 10000);
+      delay.counter++;
     });
   }
 
