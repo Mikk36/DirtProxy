@@ -59,7 +59,7 @@ class Server {
 
   registerHandlers() {
     this.expressServer.get("/id/:id", Server.raceHandler);
-    this.expressServer.get("/id/:id/remove", Server.removeCacheHandler);
+    //this.expressServer.get("/id/:id/remove", Server.removeCacheHandler);
     this.expressServer.get("/", Server.indexHandler);
     this.expressServer.get("/robots.txt", Server.robotsHandler);
   }
@@ -415,22 +415,22 @@ Disallow: `;
     });
   }
 
-  static removeCacheHandler(req, res) {
-    let id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      res.status(500).send({error: "Invalid ID parameter"});
-      return;
-    }
-
-    Server.removeCache(id, (err) => {
-      if (err) {
-        console.error(err);
-        res.status(500).send({error: err});
-        return;
-      }
-      res.send({status: "OK"});
-    });
-  }
+  // static removeCacheHandler(req, res) {
+  //   let id = parseInt(req.params.id, 10);
+  //   if (isNaN(id)) {
+  //     res.status(500).send({error: "Invalid ID parameter"});
+  //     return;
+  //   }
+  //
+  //   Server.removeCache(id, (err) => {
+  //     if (err) {
+  //       console.error(err);
+  //       res.status(500).send({error: err});
+  //       return;
+  //     }
+  //     res.send({status: "OK"});
+  //   });
+  // }
 
   static removeCache(id, cb) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
