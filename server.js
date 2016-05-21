@@ -138,14 +138,6 @@ Disallow: `;
   }
 
   /**
-   *
-   * @param {Error|string} err
-   */
-  static errorLogger(err) {
-    console.error(err);
-  }
-
-  /**
    * Update cache files
    */
   static updateCacheFiles() {
