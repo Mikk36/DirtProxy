@@ -44,6 +44,10 @@ class Server {
     }
   }
 
+  /**
+   * Retrieves the configuration
+   * @returns {object}
+   */
   static loadConfig() {
     try {
       return jsonFile.readFileSync("config.json");
