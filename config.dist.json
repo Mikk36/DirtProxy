@@ -1,3 +1,4 @@
 {
-  "listeningPort": 3021
+  "listeningPort": 3021,
+  "cron": "*/3 * * * *"
 }

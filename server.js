@@ -21,9 +21,18 @@ class Server {
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
-    this.cronJob = schedule.scheduleJob("*/3 * * * *", Server.updateCacheFiles);
+    Server.cronJobSetup(this.config.cron);
 
     //Server.updateCacheFiles();
+  }
+
+  /**
+   * Set up cron job
+   * @param {String} cron
+   */
+  static cronJobSetup(cron) {
+    Server._activeUpdates = [];
+    schedule.scheduleJob(cron, Server.updateCacheFiles);
   }
 
   /**
@@ -185,10 +194,54 @@ Disallow: `;
   }
 
   /**
+   * Check if there are active cache updates for a specific ID
+   * @param {Number} id
+   * @returns {boolean}
+   */
+  static checkActive(id) {
+    if (Server._activeUpdates.indexOf(id) > -1) {
+      return true;
+    }
+  }
+
+  /**
+   * Add an ID to the active list
+   * @param {Number} id
+   */
+  static addActive(id) {
+    Server._activeUpdates.push(id);
+  }
+
+  /**
+   * Remove an ID from the active list
+   * @param {Number} id
+   */
+  static removeActive(id) {
+    let index = Server._activeUpdates.indexOf(id);
+    if (index > -1) {
+      Server._activeUpdates.splice(index, 1);
+    }
+  }
+
+  /**
+   * Return currently active updates count
+   * @returns {Number}
+   */
+  static countActive() {
+    return Server._activeUpdates.length;
+  }
+
+  /**
    * Update cache item
    * @param {number} id - Cache ID
    */
   static updateCache(id) {
+    if (Server.checkActive(id)) {
+      console.error("Update for %d already active", id);
+      return;
+    }
+    Server.addActive(id);
+
     console.log(`Updating cache for ${id}`);
     let response = {
       id: id,
@@ -203,7 +256,10 @@ Disallow: `;
     let start = Date.now();
     http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
         }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, Server.firstFetchHandler.bind(null, response, start)
-    ).on("error", Server.errorLogger);
+    ).on("error", err => {
+      Server.removeActive(response.id);
+      console.error(err);
+    });
   }
 
   /**
@@ -234,6 +290,7 @@ Disallow: `;
       try {
         result = JSON.parse(body);
       } catch (err) {
+        Server.removeActive(response.id);
         console.error(err);
         return;
       }
@@ -251,12 +308,18 @@ Disallow: `;
             http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                     }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=${i}`,
                 Server.ssHandler.bind(null, i, response, start1)
-            ).on("error", Server.errorLogger);
+            ).on("error", err => {
+              Server.removeActive(response.id);
+              console.error(err);
+            });
           }, i * 1000);
         }
       }
     });
-    res.on("error", Server.errorLogger);
+    res.on("error", err => {
+      Server.removeActive(response.id);
+      console.error(err);
+    });
   }
 
   /**
@@ -278,6 +341,7 @@ Disallow: `;
         try {
           ssResult = JSON.parse(body);
         } catch (err) {
+          Server.removeActive(response.id);
           console.error(err);
           return;
         }
@@ -285,6 +349,7 @@ Disallow: `;
 
       if (ssResult.Pages === 0 && stage === 1) {
         Server.stopUpdating(response.id);
+        Server.removeActive(response.id);
         return;
       }
 
@@ -308,7 +373,10 @@ Disallow: `;
               http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
                   }&leaderboard=true&noCache=${Date.now()}&page=${i}&stageId=${stage
                   }`, Server.ssPageHandler.bind(null, resolve, reject, response, start1)
-              ).on("error", Server.errorLogger);
+              ).on("error", err => {
+                Server.removeActive(response.id);
+                console.error(err);
+              });
             }, i * 1000);
           }));
         }
@@ -324,6 +392,7 @@ Disallow: `;
             Server.saveDataToCache(response);
           }
         }, (reason) => {
+          Server.removeActive(response.id);
           console.error(reason);
         });
       }
@@ -334,7 +403,10 @@ Disallow: `;
         body += chunk;
       });
       res.on("end", endHandler);
-      res.on("error", Server.errorLogger);
+      res.on("error", err => {
+        Server.removeActive(response.id);
+        console.error(err);
+      });
     } else {
       endHandler(res);
     }
@@ -437,16 +509,19 @@ Disallow: `;
       response.stageData.push(stageData);
     });
     if (processingFailed === true) {
+      Server.removeActive(data.id);
       return;
     }
     if (response.stageCount !== response.stageData.length) {
       console.error(`StageData count differs from intended stageCount!`);
+      Server.removeActive(data.id);
       Server.retryCache(data.id);
       return;
     }
 
-    jsonFile.readFile(`cache/${response.id}.json`, (err, oldData) => {
+    jsonFile.readFile(`cache/${data.id}.json`, (err, oldData) => {
       if (err) {
+        Server.removeActive(data.id);
         console.error(err);
         return;
       }
@@ -455,12 +530,17 @@ Disallow: `;
 
       analyzedResponse.actualTime = Date.now() - data.startTime;
       analyzedResponse.cacheTime = new Date();
-      jsonFile.writeFile(`cache/${analyzedResponse.id}.json`, analyzedResponse, (err) => {
+      jsonFile.writeFile(`cache/${data.id}.json`, analyzedResponse, (err) => {
         if (err) {
           console.error(err);
+          Server.removeActive(data.id);
           return;
         }
-        console.log(`Log updated for ${analyzedResponse.id} in ${analyzedResponse.actualTime} ms with ${analyzedResponse.requestCount} requests`);
+        console.log(`Log updated for ${data.id} in ${analyzedResponse.actualTime} ms with ${analyzedResponse.requestCount} requests`);
+        Server.removeActive(data.id);
+        if (Server.countActive() === 0) {
+          console.log('All updates finished ---------------------------------');
+        }
       });
     });
   }
