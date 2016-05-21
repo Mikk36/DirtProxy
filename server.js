@@ -17,7 +17,7 @@ class Server {
   constructor() {
     Server.checkCacheFolder();
 
-    this.loadConfig();
+    this.config = Server.loadConfig();
 
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
@@ -44,14 +44,13 @@ class Server {
     }
   }
 
-  loadConfig() {
+  static loadConfig() {
     try {
-      this.config = jsonFile.readFileSync("config.json");
+      return jsonFile.readFileSync("config.json");
     } catch (err) {
       if (err.code === "ENOENT") {
         Server.createConfig();
-        this.loadConfig();
-        return;
+        return Server.loadConfig();
       }
       throw err;
     }
