@@ -6,7 +6,6 @@
 require("console-stamp")(console, {
   pattern: "d dddd HH:MM:ss.l"
 });
-const util = require("util");
 const express = require("express");
 const http = require("https");
 const fs = require("fs-extra");
@@ -63,7 +62,8 @@ class Server {
    * @throws Throws an error, if it fails to copy the config
    */
   static createConfig() {
-    console.fs.copySync("config.dist.json", "config.json");
+    console.log("Copying config file");
+    fs.copySync("config.dist.json", "config.json");
   }
 
   /**
