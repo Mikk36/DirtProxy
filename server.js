@@ -31,6 +31,10 @@ class Server {
     //Server.updateCacheFiles();
   }
 
+  /**
+   * Ensure that the cache folder exists
+   * @returns {boolean|Error}
+   */
   static checkCacheFolder() {
     try {
       fs.mkdirSync("cache");
@@ -46,6 +50,9 @@ class Server {
     }
   }
 
+  /**
+   * Start the web server
+   */
   listen() {
     var server = this.expressServer.listen(listeningPort, "0.0.0.0", () => {
       var host = server.address().address;
@@ -57,6 +64,9 @@ class Server {
     this.registerHandlers();
   }
 
+  /**
+   * Set up listeners for the web server
+   */
   registerHandlers() {
     this.expressServer.get("/id/:id", Server.raceHandler);
     //this.expressServer.get("/id/:id/remove", Server.removeCacheHandler);
@@ -64,17 +74,32 @@ class Server {
     this.expressServer.get("/robots.txt", Server.robotsHandler);
   }
 
+  /**
+   * Index page handler
+   * @param {ClientRequest} req
+   * @param {ServerResponse} res
+   */
   static indexHandler(req, res) {
     let response = {status: "OK"};
     res.send(response);
   }
 
+  /**
+   * Robots.txt handler
+   * @param {ClientRequest} req
+   * @param {ServerResponse} res
+   */
   static robotsHandler(req, res) {
     let response = `User-agent: *
 Disallow: `;
     res.send(response);
   }
 
+  /**
+   * Cache serving handler
+   * @param {ClientRequest} req
+   * @param {ServerResponse} res
+   */
   static raceHandler(req, res) {
     let id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
@@ -85,10 +110,17 @@ Disallow: `;
     Server.sendCached(res, id);
   }
 
+  /**
+   *
+   * @param {Error|string} err
+   */
   static errorLogger(err) {
     console.error(err);
   }
 
+  /**
+   * Update cache files
+   */
   static updateCacheFiles() {
     util.log("Looking for files to update");
     fs.readdir("cache", (err, files) => {
@@ -110,22 +142,12 @@ Disallow: `;
     });
   }
 
-  static updateCache(id) {
-    util.log(`Updating cache for ${id}`);
-    let response = {
-      id: id,
-      totalTime: 0,
-      startTime: Date.now(),
-      rallyData: [],
-      requestCount: 1
-    };
-
-    let start = Date.now();
-    http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
-        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, Server.firstFetchHandler.bind(null, response, start)
-    ).on("error", Server.errorLogger);
-  }
-
+  /**
+   * Check if a specific cache item needs an update
+   * @param {number} id - Cache ID
+   * @param {Object} delay
+   * @param {number} delay.counter
+   */
   static checkUpdateNeeded(id, delay) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
@@ -144,6 +166,46 @@ Disallow: `;
     });
   }
 
+  /**
+   * Update cache item
+   * @param {number} id - Cache ID
+   */
+  static updateCache(id) {
+    util.log(`Updating cache for ${id}`);
+    let response = {
+      id: id,
+      totalTime: 0,
+      startTime: Date.now(),
+      rallyData: [],
+      requestCount: 1,
+      rallyCount: null,
+      ssFinished: null
+    };
+
+    let start = Date.now();
+    http.get(`https://www.dirtgame.com/uk/api/event?assists=any&eventId=${response.id
+        }&leaderboard=true&noCache=${Date.now()}&page=1&stageId=0`, Server.firstFetchHandler.bind(null, response, start)
+    ).on("error", Server.errorLogger);
+  }
+
+  /**
+   * Container for response data before saving
+   * @typedef {Object} Response
+   * @property {number} id - Event ID
+   * @property {number} totalTime - Total cumulative time taken for each request
+   * @property {number} startTime - Time of beginning the update
+   * @property {Array} rallyData - Array of stages
+   * @property {number} requestCount - Amount of requests made
+   * @property {number} rallyCount - Amount of stages
+   * @property {number} ssFinished - Amount of processed stages
+   */
+
+  /**
+   * Process the overall information response
+   * @param {Response} response
+   * @param {number} start Request start time
+   * @param {ServerResponse} res
+   */
   static firstFetchHandler(response, start, res) {
     let body = "";
     res.on("data", (chunk) => {
@@ -179,6 +241,13 @@ Disallow: `;
     res.on("error", Server.errorLogger);
   }
 
+  /**
+   * Process first page of a stage
+   * @param {number} stage Stage number
+   * @param {Response} response
+   * @param {number} start
+   * @param {ServerResponse} res
+   */
   static ssHandler(stage, response, start, res) {
     let body = "";
     let endHandler = (jsonData) => {
@@ -253,6 +322,27 @@ Disallow: `;
     }
   }
 
+  /**
+   * @callback ResolveCallback
+   * @param {T} result
+   * @template T
+   */
+
+  /**
+   * @callback RejectedCallback
+   * @param {Error} reason - Rejected reason
+   * @returns {S}
+   * @template S
+   */
+
+  /**
+   * Process additional pages of a stage
+   * @param {ResolveCallback} resolve
+   * @param {RejectedCallback} reject
+   * @param {Response} response
+   * @param {number} start
+   * @param {ServerResponse} res
+   */
   static ssPageHandler(resolve, reject, response, start, res) {
     let body = "";
     res.on("data", (chunk) => {
@@ -277,6 +367,10 @@ Disallow: `;
     });
   }
 
+  /**
+   * Process all the gathered data
+   * @param {Response} data
+   */
   static saveDataToCache(data) {
     var response = {
       id: data.id,
@@ -343,6 +437,10 @@ Disallow: `;
     });
   }
 
+  /**
+   * Queue a retry of a failed attempt to gather data of a stage
+   * @param {number} id - Cache ID
+   */
   static retryCache(id) {
     setTimeout(() => {
       util.log(`Retrying to update cache for ${id}`);
@@ -350,6 +448,11 @@ Disallow: `;
     }, 5000);
   }
 
+  /**
+   * Serve cached data of a stage
+   * @param {ServerResponse} res
+   * @param {number} id - Cache ID
+   */
   static sendCached(res, id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
@@ -368,6 +471,10 @@ Disallow: `;
     });
   }
 
+  /**
+   * Stop updating a cache, if necessary
+   * @param {number} id - Cache ID
+   */
   static stopUpdating(id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
@@ -415,23 +522,16 @@ Disallow: `;
     });
   }
 
-  // static removeCacheHandler(req, res) {
-  //   let id = parseInt(req.params.id, 10);
-  //   if (isNaN(id)) {
-  //     res.status(500).send({error: "Invalid ID parameter"});
-  //     return;
-  //   }
-  //
-  //   Server.removeCache(id, (err) => {
-  //     if (err) {
-  //       console.error(err);
-  //       res.status(500).send({error: err});
-  //       return;
-  //     }
-  //     res.send({status: "OK"});
-  //   });
-  // }
+  /**
+   * @callback errorCallback
+   * @param {Error} [err]
+   */
 
+  /**
+   *
+   * @param {number} id - Cache ID
+   * @param {errorCallback} [cb] - Callback when finished
+   */
   static removeCache(id, cb) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
