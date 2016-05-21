@@ -16,13 +16,12 @@ const morgan = require('morgan');
 class Server {
   constructor() {
     Server.checkCacheFolder();
-
     this.config = Server.loadConfig();
 
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
 
-    this.cronJob = schedule.scheduleJob("*/30 * * * *", Server.updateCacheFiles);
+    this.cronJob = schedule.scheduleJob("*/3 * * * *", Server.updateCacheFiles);
 
     //Server.updateCacheFiles();
   }
@@ -445,15 +444,96 @@ Disallow: `;
       Server.retryCache(data.id);
       return;
     }
-    response.actualTime = Date.now() - data.startTime;
-    response.cacheTime = new Date();
-    jsonFile.writeFile(`cache/${response.id}.json`, response, (err) => {
+
+    jsonFile.readFile(`cache/${response.id}.json`, (err, oldData) => {
       if (err) {
         console.error(err);
         return;
       }
-      console.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
+
+      let analyzedResponse = Server.analyzeData(oldData, response);
+
+      analyzedResponse.actualTime = Date.now() - data.startTime;
+      analyzedResponse.cacheTime = new Date();
+      jsonFile.writeFile(`cache/${analyzedResponse.id}.json`, analyzedResponse, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log(`Log updated for ${analyzedResponse.id} in ${analyzedResponse.actualTime} ms with ${analyzedResponse.requestCount} requests`);
+      });
     });
+  }
+
+  /**
+   * Analyze data for drivers having restarted
+   * @param {object} oldData
+   * @param {object} newData
+   * @returns {object}
+   */
+  static analyzeData(oldData, newData) {
+    let data = JSON.parse(JSON.stringify(newData));
+    if (typeof data.id === "undefined") {
+      return data;
+    }
+    
+    let drivers = {};
+    let driverFiller = entry => {
+      drivers[entry.Name] = {
+        stagesOld: {},
+        stagesNew: {}
+      };
+    };
+    oldData.stageData[0].entries.map(driverFiller);
+    data.stageData[0].entries.map(driverFiller);
+
+    let driverList = Object.keys(drivers);
+
+    oldData.stageData.map((stage, stageNumber) => {
+      stage.entries.map(entry => {
+        drivers[entry.Name].stagesOld["" + stageNumber] = entry.Time;
+      })
+    });
+
+    data.stageData.map((stage, stageNumber) => {
+      stage.entries.map(entry => {
+        drivers[entry.Name].stagesNew["" + stageNumber] = entry.Time;
+      })
+    });
+
+
+    let restarterList = driverList.filter(driverName => {
+      let driver = drivers[driverName];
+      let oldStageCount = Object.keys(driver.stagesOld).length;
+      let newStageCount = Object.keys(driver.stagesNew).length;
+
+      if (oldStageCount > newStageCount) {
+        return true;
+      }
+      let stageList = Object.keys(driver.stagesOld);
+      for (let stageNum of stageList) {
+        if (driver.stagesOld[stageNum] !== driver.stagesNew[stageNum]) {
+          return true;
+        }
+      }
+    });
+
+    if (restarterList.length > 0) {
+      if (!data.hasOwnProperty("restarters")) {
+        data.restarters = {};
+      }
+    }
+
+    for (let restarter of restarterList) {
+      console.info("Found a restarter: %s", restarter);
+      if (data.restarters.hasOwnProperty(restarter)) {
+        data.restarters[restarter]++;
+      } else {
+        data.restarters[restarter] = 1;
+      }
+    }
+
+    return data;
   }
 
   /**
