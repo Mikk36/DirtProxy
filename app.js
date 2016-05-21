@@ -6,8 +6,7 @@ var Server = require("./server");
 var server = null;
 try {
   server = new Server();
+  server.listen();
 } catch (err) {
   console.error(err);
-} finally {
-  server.listen();
 }
