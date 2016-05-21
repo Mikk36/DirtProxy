@@ -3,25 +3,22 @@
  */
 "use strict";
 
+require("console-stamp")(console, {
+  pattern: "d dddd HH:MM:ss.l"
+});
 const util = require("util");
 const express = require("express");
 const http = require("https");
-const fs = require("fs");
+const fs = require("fs-extra");
 const jsonFile = require("jsonfile");
 const schedule = require("node-schedule");
 const morgan = require('morgan');
 
-// Config
-const listeningPort = 3021;
-// Config end
-
 class Server {
   constructor() {
-    let cacheTest = Server.checkCacheFolder();
-    if (cacheTest !== true) {
-      console.error(cacheTest);
-      return;
-    }
+    Server.checkCacheFolder();
+
+    this.loadConfig();
 
     this.expressServer = express();
     this.expressServer.use(morgan(":date[iso] :remote-addr :method :url :status :res[content-length]"));
@@ -33,31 +30,50 @@ class Server {
 
   /**
    * Ensure that the cache folder exists
-   * @returns {boolean|Error}
+   * @throw Throws an error, if it fails to create the cache folder
    */
   static checkCacheFolder() {
     try {
       fs.mkdirSync("cache");
-      // Folder created
-      return true;
     } catch (err) {
-      if (err.code == 'EEXIST') {
+      if (err.code === "EEXIST") {
         // All good, folder is there
-        return true;
+        return;
       }
       // Something went wrong
-      return err;
+      throw err;
     }
+  }
+
+  loadConfig() {
+    try {
+      this.config = jsonFile.readFileSync("config.json");
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        Server.createConfig();
+        this.loadConfig();
+        return;
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Copy configuration file from the default one
+   * @throws Throws an error, if it fails to copy the config
+   */
+  static createConfig() {
+    console.fs.copySync("config.dist.json", "config.json");
   }
 
   /**
    * Start the web server
    */
   listen() {
-    var server = this.expressServer.listen(listeningPort, "0.0.0.0", () => {
+    var server = this.expressServer.listen(this.config.listeningPort, "0.0.0.0", () => {
       var host = server.address().address;
       var port = server.address().port;
-      util.log("Webserver listening at http://%s:%s", host, port);
+      console.log("Webserver listening at http://%s:%d", host, port);
     });
     this.webServer = server;
 
@@ -122,7 +138,7 @@ Disallow: `;
    * Update cache files
    */
   static updateCacheFiles() {
-    util.log("Looking for files to update");
+    console.log("Looking for files to update");
     fs.readdir("cache", (err, files) => {
       if (err) {
         console.error(err);
@@ -151,7 +167,7 @@ Disallow: `;
   static checkUpdateNeeded(id, delay) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
-        util.log(err);
+        console.log(err);
         return;
       }
 
@@ -171,7 +187,7 @@ Disallow: `;
    * @param {number} id - Cache ID
    */
   static updateCache(id) {
-    util.log(`Updating cache for ${id}`);
+    console.log(`Updating cache for ${id}`);
     let response = {
       id: id,
       totalTime: 0,
@@ -433,7 +449,7 @@ Disallow: `;
         console.error(err);
         return;
       }
-      util.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
+      console.log(`Log updated for ${response.id} in ${response.actualTime} ms with ${response.requestCount} requests`);
     });
   }
 
@@ -443,7 +459,7 @@ Disallow: `;
    */
   static retryCache(id) {
     setTimeout(() => {
-      util.log(`Retrying to update cache for ${id}`);
+      console.log(`Retrying to update cache for ${id}`);
       Server.updateCache(id);
     }, 5000);
   }
@@ -478,7 +494,7 @@ Disallow: `;
   static stopUpdating(id) {
     jsonFile.readFile(`cache/${id}.json`, (err, data) => {
       if (err) {
-        util.log(err);
+        console.log(err);
         return;
       }
 
@@ -500,11 +516,11 @@ Disallow: `;
 
       jsonFile.writeFile(`cache/${id}.json`, data, (err) => {
         if (err) {
-          util.log(err);
+          console.log(err);
           return;
         }
         if (typeof data.rallyFinished !== "undefined") {
-          util.log(`Stopping updates for ${id}`);
+          console.log(`Stopping updates for ${id}`);
           if (typeof data.error !== "undefined") {
 
             Server.removeCache(id, (err) => {
@@ -516,7 +532,7 @@ Disallow: `;
             });
           }
         } else {
-          util.log(`Update stopping check ${data.finishUpdating} for ${id}`);
+          console.log(`Update stopping check ${data.finishUpdating} for ${id}`);
         }
       })
     });

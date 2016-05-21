@@ -3,5 +3,11 @@
  */
 var Server = require("./server");
 
-var server = new Server();
-server.listen();
+var server = null;
+try {
+  server = new Server();
+} catch (err) {
+  console.error(err);
+} finally {
+  server.listen();
+}
