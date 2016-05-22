@@ -549,7 +549,7 @@ Disallow: `;
       return data;
     }
     if (typeof oldData.restarters !== "undefined") {
-      data.restarters = oldData.restarters;
+      data.restarters = JSON.parse(JSON.stringify(oldData.restarters));
     }
     
     let drivers = {};
