@@ -545,8 +545,11 @@ Disallow: `;
    */
   static analyzeData(oldData, newData) {
     let data = JSON.parse(JSON.stringify(newData));
-    if (typeof data.id === "undefined") {
+    if (typeof oldData.id === "undefined") {
       return data;
+    }
+    if (typeof oldData.restarters !== "undefined") {
+      data.restarters = oldData.restarters;
     }
     
     let drivers = {};
