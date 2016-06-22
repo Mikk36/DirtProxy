@@ -504,6 +504,12 @@ Disallow: `;
       Server.removeActive(data.id);
       return;
     }
+    if (response.stageCount === 0) {
+      console.error('StageData count should not be 0');
+      Server.removeActive(data.id);
+      Server.retryCache(data.id);
+      return;
+    }
     if (response.stageCount !== response.stageData.length) {
       console.error(`StageData count differs from intended stageCount!`);
       Server.removeActive(data.id);
@@ -517,6 +523,8 @@ Disallow: `;
         console.error(err);
         return;
       }
+
+      // TODO: recover data from old cache to new (separate method)
 
       let analyzedResponse = Server.analyzeData(oldData, response);
 
@@ -551,7 +559,7 @@ Disallow: `;
     if (typeof oldData.restarters !== "undefined") {
       data.restarters = JSON.parse(JSON.stringify(oldData.restarters));
     }
-    
+
     let drivers = {};
     let driverFiller = entry => {
       drivers[entry.Name] = {
@@ -559,6 +567,9 @@ Disallow: `;
         stagesNew: {}
       };
     };
+    if (typeof data.stageData[0] === "undefined") {
+      console.error("Something's off!");
+    }
     oldData.stageData[0].entries.map(driverFiller);
     data.stageData[0].entries.map(driverFiller);
 
@@ -616,8 +627,8 @@ Disallow: `;
    * @param {number} id - Cache ID
    */
   static retryCache(id) {
+    console.log(`Retrying to update cache for ${id}`);
     setTimeout(() => {
-      console.log(`Retrying to update cache for ${id}`);
       Server.updateCache(id);
     }, 5000);
   }
